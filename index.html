@@ -53,6 +53,43 @@
     <audio id="ringtone" src="https://www.soundjay.com/phone/phone-calling-1.mp3" loop></audio>
 
     <script type="module">
+        // --- QO'NG'IROQNI KUZATISH (Signal kelishi) ---
+const ringtone = document.getElementById('ringtone');
+
+// Baza o'zgarganda ishlaydi
+onValue(callRef, (snapshot) => {
+    const data = snapshot.val();
+    console.log("Hozirgi signal:", data); // Tekshirish uchun
+
+    if (data && data.status === "calling") {
+        // Agar qo'ng'iroq qilayotgan odam biz bo'lmasak - GUDOK CHALSIN
+        if (data.caller !== USER_ROLE) {
+            document.getElementById('callScreen').style.display = 'flex';
+            document.getElementById('callerName').innerText = data.caller + " qo'ng'iroq qilmoqda...";
+            
+            // Muhim: Ovoz chiqishi uchun foydalanuvchi ekranga bir marta bosgan bo'lishi shart
+            ringtone.play().catch(err => {
+                console.log("Ovoz bloklandi! Saytga bir marta bosing.");
+            });
+        }
+    } else {
+        // Agar status "ended" bo'lsa yoki ma'lumot bo'lmasa - GUDOKNI TO'XTATISH
+        stopRingtone();
+        document.getElementById('callScreen').style.display = 'none';
+    }
+});
+
+// QO'NG'IROQNI BOSHLASH TUGMASI
+window.initiateCall = function() {
+    console.log(USER_ROLE + " qo'ng'iroqni boshladi...");
+    set(callRef, {
+        caller: USER_ROLE,
+        status: "calling",
+        time: Date.now()
+    }).then(() => {
+        startVideoChat(); // O'zi uchun videoni ochadi
+    });
+}
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
