@@ -3,46 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xotini - Oila Chati</title>
+    <title>Oila Chati PRO</title>
+    <script src="https://8x8.vc/vpaas-magic-cookie-8877665544332211/external_api.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #fce4ec; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #e5ddd5; margin: 0; }
         .chat-container { max-width: 500px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #fff; }
-        header { padding: 15px; background: #d81b60; color: white; text-align: center; font-weight: bold; font-size: 20px; }
-        
-        /* Xabarlar maydoni */
-        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background-color: #fce4ec; }
-        
-        /* Xabar pufakchalari */
-        .msg-card { 
-            padding: 10px 15px; 
-            border-radius: 15px; 
-            max-width: 80%; 
-            word-wrap: break-word; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            color: #000 !important; 
-        }
-        
-        /* Xotinining xabari (O'ngda - Pushti) */
-        .sent { align-self: flex-end; background: #f8bbd0; border-bottom-right-radius: 2px; }
-        /* Erining xabari (Chapda - Oq) */
-        .received { align-self: flex-start; background: #ffffff; border-bottom-left-radius: 2px; }
-        
-        .sender-name { font-size: 11px; font-weight: bold; color: #ad1457; margin-bottom: 3px; }
-        .text-content { font-size: 16px; line-height: 1.4; color: #000; }
-        .time-stamp { font-size: 10px; color: #888; text-align: right; margin-top: 5px; }
-
-        .input-area { display: flex; padding: 15px; background: #fff; border-top: 1px solid #eee; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 16px; padding-left: 20px; }
-        button { background: #d81b60; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; margin-left: 10px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+        header { padding: 15px; background: #075e54; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; background: #f0f2f5; }
+        .msg { padding: 10px; border-radius: 10px; max-width: 80%; position: relative; }
+        .sent { align-self: flex-end; background: #dcf8c6; }
+        .received { align-self: flex-start; background: #fff; }
+        .chat-img, .chat-vid { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+        .input-area { display: flex; padding: 10px; background: #eee; align-items: center; }
+        #msgInput { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        .call-btn { background: #25d366; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
+        .media-btn { font-size: 24px; cursor: pointer; margin-right: 10px; color: #075e54; }
+        #video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999; display: none; background: #000; }
     </style>
 </head>
 <body>
+    <div id="video-container"><div id="jitsi-container" style="height: 100%"></div></div>
     <div class="chat-container">
-        <header>AYOLIM ❤️</header>
+        <header>
+            <span>OILA ❤️</span>
+            <button class="call-btn" onclick="startCall()">📞</button>
+        </header>
         <div id="chatBox" class="chat-box"></div>
         <div class="input-area">
-            <input type="text" id="msgInput" placeholder="Xabar yozing..." onkeypress="if(event.key==='Enter') sendMsg()">
-            <button id="sendBtn">➤</button>
+            <label for="fileInput" class="media-btn">🖼️</label>
+            <input type="file" id="fileInput" style="display:none" accept="image/*,video/*">
+            <input type="text" id="msgInput" placeholder="Xabar...">
+            <button onclick="sendMsg()" style="border:none; background:none; font-size:24px; cursor:pointer">➤</button>
         </div>
     </div>
 
@@ -50,7 +41,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // DIQQAT: Bu sizning Firebase ma'lumotlaringiz. O'zgartirmang!
         const firebaseConfig = {
             apiKey: "AIzaSyBg3gwfAr7Rkp9hAZxgbJeDdEIf2WZL1yU",
             authDomain: "chat-cb6f4.firebaseapp.com",
@@ -64,39 +54,57 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const chatRef = ref(db, "messages");
+        const USER_ROLE = "Eri"; // Xotinida "Xotini" qiling
 
-        const USER_ROLE = "Xotini"; // BU YERDA ROL O'ZGARDI
-
-        function sendMsg() {
-            const msgInput = document.getElementById('msgInput');
-            const text = msgInput.value.trim();
-            if (text !== "") {
-                push(chatRef, {
-                    sender: USER_ROLE,
-                    text: text,
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
-                msgInput.value = "";
+        // MATN YUBORISH
+        window.sendMsg = function() {
+            const input = document.getElementById('msgInput');
+            if (input.value.trim()) {
+                push(chatRef, { sender: USER_ROLE, type: 'text', text: input.value });
+                input.value = "";
             }
         }
 
-        document.getElementById('sendBtn').onclick = sendMsg;
+        // RASM/VIDEO YUBORISH (Cloudinary orqali)
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', 'ml_default'); // Cloudinary sozlami
+
+            const res = await fetch('https://api.cloudinary.com/v1_1/demo/image/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            push(chatRef, {
+                sender: USER_ROLE,
+                type: file.type.includes('image') ? 'image' : 'video',
+                url: data.secure_url
+            });
+        };
 
         onChildAdded(chatRef, (snapshot) => {
             const msg = snapshot.val();
-            const chatBox = document.getElementById('chatBox');
-            const isMe = msg.sender === USER_ROLE;
-
-            const msgHTML = `
-                <div class="msg-card ${isMe ? 'sent' : 'received'}">
-                    <div class="sender-name">${msg.sender}</div>
-                    <div class="text-content">${msg.text}</div>
-                    <div class="time-stamp">${msg.time}</div>
-                </div>`;
+            const div = document.createElement('div');
+            div.className = `msg ${msg.sender === USER_ROLE ? 'sent' : 'received'}`;
             
-            chatBox.insertAdjacentHTML('beforeend', msgHTML);
+            if (msg.type === 'text') div.innerText = msg.text;
+            else if (msg.type === 'image') div.innerHTML = `<img src="${msg.url}" class="chat-img">`;
+            else if (msg.type === 'video') div.innerHTML = `<video src="${msg.url}" controls class="chat-vid">`;
+            
+            document.getElementById('chatBox').appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
+
+        window.startCall = function() {
+            document.getElementById('video-container').style.display = 'block';
+            new JitsiMeetExternalAPI("meet.jit.si", {
+                roomName: "OilaChati_Xona_777",
+                parentNode: document.querySelector('#jitsi-container'),
+                userInfo: { displayName: USER_ROLE }
+            });
+        }
     </script>
 </body>
 </html>
